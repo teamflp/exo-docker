@@ -1,0 +1,55 @@
+name: Exo Docker
+
+on:
+  push:
+    branches: ["development"] # Déclencher le workflow lorsqu'un commit est effectué sur la branche development
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Docker Image
+        run: |
+          docker build -t devops:latest .
+
+      # Arrêt et suppression du conteneur s'il existe
+      - name: Stop and Remove existing Docker container
+        run: |
+          docker stop devops || true
+          docker rm devops || true
+
+      # Création et démarrage d'un nouveau conteneur Docker
+      - name: Run Docker container
+        run: |
+          docker run -d --name devops devops:latest
+
+          # Le mappage -p 8080:80 rendra votre application accessible sur le port 8080 de l'hôte.
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
